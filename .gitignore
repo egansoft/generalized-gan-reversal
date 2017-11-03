@@ -102,3 +102,5 @@ ENV/
 
 # our data file
 data/
+toydata/
+toydata.zip
