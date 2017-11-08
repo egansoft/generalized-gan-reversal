@@ -2,11 +2,19 @@ import numpy as numpy
 import sklearn.cluster as cl
 import readData as rd
 import outputClusters
+import sys
+
+if len(sys.argv) < 3:
+  raise Exception('required arguments: numImages, numClusters')
+
+numImages = int(sys.argv[1]) # -1 means all images
+numClusters = int(sys.argv[2])
 
 X, metadata = rd.readSerializedData()
-#X = X[:50]
-#metadata = metadata[:50]
-clusters = cl.KMeans(n_clusters = 4, random_state = 0, verbose=1)
+if numImages != -1:
+  X = X[:numImages]
+  metadata = metadata[:numImages]
+clusters = cl.KMeans(n_clusters=numClusters, random_state = 0, verbose=1, n_jobs=-1)
 X_clusters = clusters.fit_predict(X)
 
 cluster_map = {}
