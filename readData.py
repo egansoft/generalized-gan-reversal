@@ -15,10 +15,11 @@ def readImageData(shape = (200,200), amt=-1):
     if i % 100 == 0:
       print i
     i+=1
-    a = misc.imread(mypath+f, mode = "L")
+    a = misc.imread(PATH+f, mode = "L")
     aspect_ratio = float(a.shape[0]) / a.shape[1]
     if 0.5 < aspect_ratio < 2.0:
-      a = misc.imresize(a, shape).flatten()
+      a = misc.imresize(a, shape)
+      a = a.flatten()
       images.append(a)
   return np.vstack(images)
 
