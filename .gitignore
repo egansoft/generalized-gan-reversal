@@ -103,3 +103,5 @@ ENV/
 # our data file
 data/
 toydata/
+*~
+*.sw*
