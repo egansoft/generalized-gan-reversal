@@ -1,5 +1,11 @@
 # cuisine-clustering
 
 ## Setup
-Unzip toydata.zip and move to data/
-Or just unzip the original dataset to data/
+```
+unzip toydata.zip
+mv toydata data
+python transformData.py
+mkdir output
+cd output
+ln -s ../data/photos/ photos
+```
