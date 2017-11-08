@@ -3,19 +3,25 @@ from scipy import misc
 from os import listdir
 from os.path import isfile, join
 
-def readData(mypath, shape = (200,200)):
-  onlyfiles = [f for f in listdir(mypath) if isfile(join(mypath, f))]
-  X = []
-  i = 0
-  for f in onlyfiles[:500]:
-    print i
+def readImageData(shape = (200,200), amt=-1):
+  PATH = 'data/photos/'
+  onlyfiles = [f for f in listdir(PATH) if isfile(join(PATH, f))]
+  images = []
+  i = 0 
+  if amt != -1:
+    onlyfiles = onlyfiles[:amt]
+
+  for f in onlyfiles:
+    if i % 100 == 0:
+      print i
     i+=1
     a = misc.imread(mypath+f, mode = "L")
     aspect_ratio = float(a.shape[0]) / a.shape[1]
     if 0.5 < aspect_ratio < 2.0:
-      a = misc.imresize(a, shape)
-      if len(X) == 0:
-        X = a.flatten()
-      else:
-        X = np.vstack((X, a.flatten()))
-  return X
+      a = misc.imresize(a, shape).flatten()
+      images.append(a)
+  return np.vstack(images)
+
+def readSerializedData():
+  PATH = 'data/transformedPhotos.npy'
+  return np.load(PATH)
