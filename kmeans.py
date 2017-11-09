@@ -23,4 +23,14 @@ for i in xrange(len(X_clusters)):
     cluster_map[X_clusters[i]] = []
   cluster_map[X_clusters[i]].append(i)
 
-outputClusters.generatePage(cluster_map, metadata, 'kmeans')
+medians = []
+clusterCenters = clusters.cluster_centers_
+for i in xrange(numClusters):
+  a = clusterCenters[i].reshape((200,200)).astype('uint8')
+  medians.append(a)
+
+params = {
+  'numImages': numImages,
+  'numClusters': numClusters,
+}
+outputClusters.generatePage(cluster_map, metadata, medians, 'kmeans', extraData=params)
