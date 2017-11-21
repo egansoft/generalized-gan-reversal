@@ -71,7 +71,7 @@ class Generator(nn.Module):
     )
     self.apply(weights_init)
     if backup_file != '':
-      self.load_state_dict(torch.load(backup_file))
+      self.load_state_dict(torch.load(backup_file, map_location=lambda a, b: a))
 
   def forward(self, input):
     if isinstance(input.data, torch.cuda.FloatTensor) and self.ngpu > 1:
