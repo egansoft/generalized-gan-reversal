@@ -97,6 +97,8 @@ def train(opt, netD, netG, dataloader, nz):
   noise = torch.FloatTensor(opt.batchSize, nz, 1, 1)
   fixed_noise = torch.FloatTensor(64, nz, 1, 1).normal_(0, 1)
   label = torch.FloatTensor(opt.batchSize)
+  label_rnoise = torch.FloatTensor(opt.batchSize)
+  label_fnoise = torch.FloatTensor(opt.batchSize)
   real_label = 1
   fake_label = 0
 
@@ -106,6 +108,7 @@ def train(opt, netD, netG, dataloader, nz):
     criterion.cuda()
     input, label = input.cuda(), label.cuda()
     noise, fixed_noise = noise.cuda(), fixed_noise.cuda()
+    label_rnoise, label_fnoise = label_rnoise.cuda(), label_fnoise.cuda()
 
   fixed_noise = Variable(fixed_noise)
 
@@ -116,8 +119,6 @@ def train(opt, netD, netG, dataloader, nz):
   print 'Starting training'
   for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
-      flipper = random.random() < .1
-
       ############################
       # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
       ###########################
@@ -128,12 +129,10 @@ def train(opt, netD, netG, dataloader, nz):
       if opt.cuda:
         real_cpu = real_cpu.cuda()
       input.resize_as_(real_cpu).copy_(real_cpu)
-      if not flipper:
-        label.resize_(batch_size).fill_(real_label)
-      else:
-        label.resize_(batch_size).fill_(fake_label)
+      label.resize_(batch_size).fill_(real_label)
+      label_rnoise.resize_(batch_size).uniform_(-.3, .2)
       inputv = Variable(input)
-      labelv = Variable(label)
+      labelv = Variable(label + label_rnoise)
 
       output = netD(inputv)
       errD_real = criterion(output, labelv)
@@ -144,10 +143,8 @@ def train(opt, netD, netG, dataloader, nz):
       noise.resize_(batch_size, nz, 1, 1).normal_(0, 1)
       noisev = Variable(noise)
       fake = netG(noisev)
-      if not flipper:
-        labelv = Variable(label.fill_(fake_label))
-      else:
-        labelv = Variable(label.fill_(real_label))
+      label_fnoise.resize_(batch_size).uniform_(0,.3)
+      labelv = Variable(label.fill_(fake_label) + label_fnoise)
       output = netD(fake.detach())
       errD_fake = criterion(output, labelv)
       errD_fake.backward()

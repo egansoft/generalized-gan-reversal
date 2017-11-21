@@ -116,7 +116,7 @@ def train(opt, netD, netG, dataloader, nz):
   print 'Starting training'
   for epoch in range(opt.niter):
     for i, data in enumerate(dataloader, 0):
-      flipper = random.random() < .1
+      flipper = random.random() < 0
 
       ############################
       # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
