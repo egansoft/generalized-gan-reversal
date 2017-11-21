@@ -1,0 +1,21 @@
+Namespace(batchSize=64, beta1=0.5, cuda=False, dataroot='data/', imageSize=64, lr=0.0002, manualSeed=None, ndf=64, netD='output/gan-samples-short/netD_epoch_6.pth', netG='output/gan-samples-short/netG_epoch_7.pth', ngf=128, ngpu=1, niter=25, nz=100, outf='output/gan-samples/', workers=2)
+cuda: True
+('Random Seed: ', 2736)
+Discriminator (
+  (main): Sequential (
+    (0): Conv2d(3, 64, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (1): LeakyReLU (0.2, inplace)
+    (2): Conv2d(64, 128, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True)
+    (4): LeakyReLU (0.2, inplace)
+    (5): Conv2d(128, 256, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (6): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True)
+    (7): LeakyReLU (0.2, inplace)
+    (8): Conv2d(256, 512, kernel_size=(4, 4), stride=(2, 2), padding=(1, 1), bias=False)
+    (9): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True)
+    (10): LeakyReLU (0.2, inplace)
+    (11): Conv2d(512, 1, kernel_size=(4, 4), stride=(1, 1), bias=False)
+    (12): Sigmoid ()
+  )
+)
+While copying the parameter named main.0.weight, whose dimensions in the model are torch.Size([100, 1024, 4, 4]) and whose dimensions in the checkpoint are torch.Size([100, 512, 4, 4]), ...
