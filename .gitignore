@@ -106,3 +106,4 @@ toydata/
 output/
 *~
 *.sw*
+logs/
