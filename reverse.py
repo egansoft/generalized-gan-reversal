@@ -63,7 +63,9 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
   optimizer_approx = optim.Adam([z_approx], lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=lam)
 
   # train
-  for i in range(opt.niter):
+  lastXLoss = float('inf')
+  for i in xrange(opt.niter):
+
     x_approx = netG(z_approx)
     mse_x = mse_loss(x_approx, x)
     if i % 1000 == 0:
@@ -71,6 +73,10 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
       zL2 = zNorm(z_approx)
       probZ = gaussPdf(z_approx)
       xLoss, zLoss = mse_x.data[0], mse_z.data[0]
+
+      if abs(xLoss - lastXLoss) < 1e-4:
+        break
+      lastXLoss = xLoss
       #print("[Iter {}] mse_x: {}, MSE_z: {}, W: {}, P(z): {}".format(i, xLoss, zLoss, zL2, probZ))
 
     # bprop
@@ -85,6 +91,9 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
     if clip == 'stochastic':
       z_approx.data[z_approx.data > 1] = random.uniform(-1, 1)
       z_approx.data[z_approx.data < -1] = random.uniform(-1, 1)
+
+  if i == opt.niter-1:
+    print 'maxed',
 
   xLoss = mse_loss(x_approx, x).data[0]
   zLoss = mse_loss_(z_approx, z).data[0]
@@ -142,7 +151,7 @@ if __name__ == '__main__':
   parser.add_argument('--nc', type=int, default=3,
             help='number of channels in the generated image')
   parser.add_argument('--ngf', type=int, default=64)
-  parser.add_argument('--niter', type=int, default=2000,
+  parser.add_argument('--niter', type=int, default=10000,
             help='number of epochs to train for')
   parser.add_argument('--lam', type=float, default=0.0)
   parser.add_argument('--lr', type=float, default=0.01,
