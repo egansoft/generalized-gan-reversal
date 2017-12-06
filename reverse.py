@@ -21,7 +21,7 @@ def gaussPdf(z):
   vec = z.data.view(100)
   return torch.sum(-(vec ** 2))/2 - 100.*math.log(2*math.pi)/2
 
-def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
+def reverse_z(netG, x, z, z_approx, opt, lam=0, clip='disabled'):
   """
   Estimate z_approx given G and G(z).
 
@@ -36,19 +36,11 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
     Variable, z_approx, the estimated z value.
   """
   # sanity check
-  assert clip in ['disabled', 'standard', 'stochastic', 'probabilistic']
+  assert clip in ['disabled', 'standard', 'stochastic', 'gaussian', 'probabilistic']
 
   # loss metrics
   mse_loss = nn.MSELoss()
   mse_loss_ = nn.MSELoss()
-
-  # init tensor
-  if opt.z_distribution == 'uniform':
-    z_approx = torch.FloatTensor(1, opt.nz, 1, 1).uniform_(-1, 1)
-  elif opt.z_distribution == 'normal':
-    z_approx = torch.FloatTensor(1, opt.nz, 1, 1).normal_(0, 1)
-  else:
-    raise ValueError()
 
   # transfer to gpu
   if opt.cuda:
@@ -63,19 +55,24 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
   # optimizer
   optimizer_approx = optim.Adam([z_approx], lr=opt.lr, betas=(opt.beta1, 0.999), weight_decay=lam)
 
+  torch.manual_seed(opt.manualSeed)
+  if opt.cuda:
+    torch.cuda.manual_seed_all(opt.manualSeed)
+
   # train
   lastXLoss = float('inf')
+  clips = 0
   for i in xrange(opt.niter):
 
     x_approx = netG(z_approx)
     mse_x = mse_loss(x_approx, x)
-    if i % 1000 == 0:
+    if i % 100 == 0:
       mse_z = mse_loss_(z_approx, z)
       zL2 = zNorm(z_approx)
       probZ = gaussPdf(z_approx)
       xLoss, zLoss = mse_x.data[0], mse_z.data[0]
 
-      if abs(xLoss - lastXLoss) < 1e-4:
+      if abs(xLoss - lastXLoss) < 1e-5:
         break
       lastXLoss = xLoss
       #print("[Iter {}] mse_x: {}, MSE_z: {}, W: {}, P(z): {}".format(i, xLoss, zLoss, zL2, probZ))
@@ -97,6 +94,18 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
         prob = norm.pdf(z_approx.data[0, i, 0, 0])
         if random.random() < math.exp(-1000 * prob):
           z_approx.data[0, i, 0, 0] = np.random.normal(0, 1)
+    if clip == 'gaussian':
+      # p(clip) = 1 - exp(-x^2 * 1e-5)
+      probs = z_approx.data.pow(2)
+      probs.mul_(-1.*10.**(-4.5))
+      probs.exp_()
+      thresh = torch.rand(100).cuda()
+      thresh.resize_as_(probs)
+      amt = z_approx.data[probs < thresh].size()
+      if len(amt) > 0:
+        clips += amt[0]
+        #print z_approx.data[probs < thresh]
+      z_approx.data[probs < thresh] = random.normalvariate(0, 1)
 
   if i == opt.niter-1:
     print 'maxed',
@@ -104,7 +113,7 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
   xLoss = mse_loss(x_approx, x).data[0]
   zLoss = mse_loss_(z_approx, z).data[0]
   probZ = gaussPdf(z_approx)
-  print("{}: mse_x: {}, MSE_z: {}, P(z): {}".format(lam, xLoss, zLoss, probZ))
+  print("{}: mse_x: {}, MSE_z: {}, P(z): {}, T: {}, clips: {}".format(clip, xLoss, zLoss, probZ, i, clips))
   vutils.save_image(x_approx.data, 'output/reverse/x_approx.png', normalize=True)
 
   #print list(z_approx.data.view(100))
@@ -116,8 +125,10 @@ def reverse_gan(opt):
   for param in netG.parameters():
     param.requires_grad = False
 
+  lams = [0, .0001, .001, .01, .1, 1]
   lams = [0]
-  epochs = 8
+  epochs = 10000
+  wins = 0.
   allLosses = np.zeros((len(lams), epochs, 3))
   for i in xrange(epochs):
     z = Variable(torch.FloatTensor(1, opt.nz, 1, 1).normal_(0, 1))
@@ -128,20 +139,28 @@ def reverse_gan(opt):
     x = netG(z)
     #vutils.save_image(x.data, 'output/reverse/x.png', normalize=True)
     #print(z.cpu().data.numpy().squeeze())
-    print 'z', i, probZ
+    print 'z', i, probZ, wins
+    opt.manualSeed = random.randint(1, 10000)
+    z_fixed = torch.FloatTensor(1, opt.nz, 1, 1).normal_(0, 1)
 
-    for li, lam in enumerate(lams):
-      z_approx, losses = reverse_z(netG, x, z, opt, lam=lam, clip=opt.clip)
-      allLosses[li, i] = losses
+    lam, li = 0, 0
+    z_approx1, losses1 = reverse_z(netG, x, z, z_fixed.clone(), opt, lam=lam, clip='disabled')
+    z_approx2, losses2 = reverse_z(netG, x, z, z_fixed.clone(), opt, lam=lam, clip='gaussian')
+    if losses1[1] > losses2[1]: # zError
+      wins += 1
+    allLosses[li, i] = losses2
 
   print
+  print 'wins: ', wins
+  '''
   for li, lam in enumerate(lams):
     avgLosses = np.sum(allLosses[li] / epochs, axis=0)
     xLoss, zLoss, probZ = tuple(avgLosses)
     var = np.sum((allLosses[li] - avgLosses) ** 2, axis=0) / epochs
     xVar, zVar, probVar = tuple(var)
-    print("{}: mse_x: {}, MSE_z: {}, P(z): {}".format(lam, xLoss, zLoss, probZ))
-    print("   var mse_x: {}, MSE_z: {}, P(z): {}".format(xVar, zVar, probVar))
+    #print("{}: mse_x: {}, MSE_z: {}, P(z): {}".format(lam, xLoss, zLoss, probZ))
+    #print("   var mse_x: {}, MSE_z: {}, P(z): {}".format(xVar, zVar, probVar))
+  '''
 
   #print(z_approx.cpu().data.numpy().squeeze())
 
