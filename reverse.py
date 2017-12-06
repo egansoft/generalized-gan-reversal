@@ -90,10 +90,18 @@ def reverse_z(netG, x, z, z_approx, opt, lam=0, clip='disabled'):
       z_approx.data[z_approx.data > 1] = random.uniform(-1, 1)
       z_approx.data[z_approx.data < -1] = random.uniform(-1, 1)
     if clip == 'probabilistic':
-      for i in range(100):
-        prob = norm.pdf(z_approx.data[0, i, 0, 0])
-        if random.random() < math.exp(-1000 * prob):
-          z_approx.data[0, i, 0, 0] = np.random.normal(0, 1)
+      probabilities = z_approx.data.pow(2)
+      probabilities.mul_(-1/2)
+      probabilities.exp_()
+      probabilities.mul_(1/math.sqrt(2*math.pi))
+      threshold = probabilities.data
+      threshold.mul_(-1000)
+      threshold.exp_()
+      amt = z_approx.data[probs < thresh].size()
+      if len(amt) > 0:
+        clips += amt[0]
+      z_approx.data[probabilities < threshold] = random.normalvariate(0, 1)
+
     if clip == 'gaussian':
       # p(clip) = 1 - exp(-x^2 * 1e-5)
       probs = z_approx.data.pow(2)
