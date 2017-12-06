@@ -97,7 +97,7 @@ interpolation = np.concatenate(interpolation, axis = 0)
 SLERP = interpolation.reshape(64,100,1,1)
 '''
 point = sample_spherical(1, 100)
-point = 0.11 * np.resize(point, 100)
+point = 0.2 * np.resize(point, 100)
 SLERP = interpolate(point)
 
 

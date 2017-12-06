@@ -10,6 +10,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 import gan
 import numpy as np
+from scipy.stats import norm
 import math
 
 def zNorm(z):
@@ -35,7 +36,7 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
     Variable, z_approx, the estimated z value.
   """
   # sanity check
-  assert clip in ['disabled', 'standard', 'stochastic']
+  assert clip in ['disabled', 'standard', 'stochastic', 'probabilistic']
 
   # loss metrics
   mse_loss = nn.MSELoss()
@@ -91,6 +92,11 @@ def reverse_z(netG, x, z, opt, lam=0, clip='disabled'):
     if clip == 'stochastic':
       z_approx.data[z_approx.data > 1] = random.uniform(-1, 1)
       z_approx.data[z_approx.data < -1] = random.uniform(-1, 1)
+    if clip == 'probabilistic':
+      for i in range(100):
+        prob = norm.pdf(z_approx.data[0, i, 0, 0])
+        if random.random() < math.exp(-1000 * prob):
+          z_approx.data[0, i, 0, 0] = np.random.normal(0, 1)
 
   if i == opt.niter-1:
     print 'maxed',
@@ -110,7 +116,7 @@ def reverse_gan(opt):
   for param in netG.parameters():
     param.requires_grad = False
 
-  lams = [0, .0001, .001, .01, .1, 1]
+  lams = [0]
   epochs = 8
   allLosses = np.zeros((len(lams), epochs, 3))
   for i in xrange(epochs):
