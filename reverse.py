@@ -86,7 +86,7 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
       z_approx.data[zData > thresh] = random.normalvariate(0, 1)
     if clip == 'logistic':
       # p(clip all) = 1/(1 + exp(-a(|x| - b)))
-      a, b = params
+      b, a = params
       zData.add_(-b) # x-b
       zData.mul_(-a) # -a(x-b)
       zData.exp_() # exp(-a(x-b))
