@@ -10,6 +10,7 @@ import torchvision.utils as vutils
 from torch.autograd import Variable
 import gan
 import numpy as np
+from scipy.stats import norm
 import math
 
 def zNorm(z):
