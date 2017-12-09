@@ -12,6 +12,7 @@ import gan
 import numpy as np
 from scipy.stats import norm
 import math
+import time
 
 def zNorm(z):
   vec = z.data.view(100)
@@ -41,6 +42,7 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
 
   lastXLoss = float('inf')
   clips = 0
+  startTime = time.time()
   for i in xrange(opt.niter):
     x_approx = netG(z_approx)
     mse_x = mse_loss(x_approx, x)
@@ -107,7 +109,8 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
   xLoss = mse_loss(x_approx, x).data[0]
   zLoss = mse_loss_(z_approx, z).data[0]
   probZ = gaussPdf(z_approx)
-  print("{}: mse_x: {}, MSE_z: {}, P(z): {}, T: {}, clips: {}, {}".format(clip, xLoss, zLoss, probZ, i, clips, params))
+  duration = int(time.time() - startTime)
+  print("{}: mse_x: {}, MSE_z: {}, P(z): {}, T: {}, clips: {}, params: {}, time: {}".format(clip, xLoss, zLoss, probZ, i, clips, params, duration))
   #vutils.save_image(x_approx.data, 'output/reverse/x_approx.png', normalize=True)
 
   recoveries = np.array([1 if zLoss < thresh else 0 for thresh in [1e-4, 1e-3, 1e-2, 1e-1, 1e0]])
