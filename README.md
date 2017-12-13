@@ -1,4 +1,4 @@
-# cuisine-clustering
+# Welcome Liang
 GANs are eating the world
 
 ## Setup
