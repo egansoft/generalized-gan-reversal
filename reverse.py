@@ -60,7 +60,9 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
 
     # clipping
     zData = z_approx.data.abs()
-    thresh = torch.rand(100).cuda()
+    thresh = torch.rand(100)
+    if opt.cuda:
+      thresh = thresh.cuda()
     thresh.resize_as_(zData)
     if clip == 'hard':
       # p(clip) = [[|x| > cutoff]]
@@ -121,7 +123,8 @@ def reverse_gan(opt):
   netG = gan.Generator(opt.ngpu, opt.nc, opt.nz, opt.ngf, opt.netG)
   for param in netG.parameters():
     param.requires_grad = False
-  netG = netG.cuda()
+  if opt.cuda:
+    netG = netG.cuda()
 
   grid = [
     ('hard', 2.5), ('hard', 3), ('hard', 3.5),
@@ -140,7 +143,8 @@ def reverse_gan(opt):
   for i in xrange(opt.niter):
     z = Variable(torch.FloatTensor(1, opt.nz, 1, 1).normal_(0, 1))
     z.data.resize_(1, opt.nz, 1, 1)
-    z = z.cuda()
+    if opt.cuda:
+      z = z.cuda()
     probZ = gaussPdf(z)
     x = netG(z)
     print i, 'P(z) =', probZ
@@ -182,7 +186,7 @@ if __name__ == '__main__':
             help="path to netG (to continue training)")
 
   opt = parser.parse_args()
-  opt.cuda = True
+  opt.cuda = torch.cuda.is_available()
   opt.expectedIter = 20000
   opt.nz, opt.nc, opt.ngf, opt.ngpu = 100, 3, 64, 1
 
