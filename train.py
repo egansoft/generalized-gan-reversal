@@ -70,4 +70,5 @@ D = gan.Discriminator(ngpu, nc, ndf, opt.netD)
 print D
 G = gan.Generator(ngpu, nc, nz, ngf, opt.netG)
 print G
+
 gan.train(opt, D, G, dataloader, nz)
