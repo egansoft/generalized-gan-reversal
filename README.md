@@ -39,9 +39,10 @@ Our GAN was trained on food photos from the [Yelp dataset](https://www.yelp.com/
 - [Kevin Shen](https://github.com/kevinshen11)
 
 ## Attributions
-Code
 - [DCGAN](https://github.com/pytorch/examples/tree/master/dcgan)
 - [Recovery for Uniform Prior](https://github.com/yxlao/pytorch-reverse-gan)
-
-Data
 - [Yelp Dataset](https://www.yelp.com/dataset)
+
+
+## License
+- [MIT License](LICENSE)
