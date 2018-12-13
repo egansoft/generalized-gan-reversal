@@ -22,7 +22,7 @@ def gaussPdf(z):
   vec = z.data.view(100)
   return torch.sum(-(vec ** 2))/2 - 100.*math.log(2*math.pi)/2
 
-def reverse_z(netG, x, z, z_approx, opt, clip, params):
+def reverse_z(netG, x, z, z_approx, opt, clip, params, evaluate_z=False):
   assert clip in ['disabled', 'tn', 'hard', 'logistic']
   mse_loss = nn.MSELoss()
   mse_loss_ = nn.MSELoss()
@@ -47,12 +47,10 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
     x_approx = netG(z_approx)
     mse_x = mse_loss(x_approx, x)
 
-    '''
-    xLoss = mse_x.data[0]
+    xLoss = mse_x.item()
     if abs(xLoss - lastXLoss) < 1e-10:
       break
     lastXLoss = xLoss
-    '''
 
     optimizer_approx.zero_grad()
     mse_x.backward()
@@ -108,15 +106,19 @@ def reverse_z(netG, x, z, z_approx, opt, clip, params):
     if len(amt) > 0:
       clips += amt[0]
 
-  xLoss = mse_loss(x_approx, x).data[0]
-  zLoss = mse_loss_(z_approx, z).data[0]
-  probZ = gaussPdf(z_approx)
-  duration = int(time.time() - startTime)
-  print("{}: mse_x: {}, MSE_z: {}, P(z): {}, T: {}, clips: {}, params: {}, time: {}".format(clip, xLoss, zLoss, probZ, i, clips, params, duration))
-  #vutils.save_image(x_approx.data, 'output/reverse/x_approx.png', normalize=True)
+  if evaluate_z:
+    xLoss = mse_loss(x_approx, x).item()
+    zLoss = mse_loss_(z_approx, z).item()
+    probZ = gaussPdf(z_approx)
+    duration = int(time.time() - startTime)
+    print("{}: mse_x: {}, MSE_z: {}, P(z): {}, T: {}, clips: {}, params: {}, time: {}".format(clip, xLoss, zLoss, probZ, i, clips, params, duration))
+    #vutils.save_image(x_approx.data, 'output/reverse/x_approx.png', normalize=True)
 
-  recoveries = np.array([1 if zLoss < thresh else 0 for thresh in [1e-4, 1e-3, 1e-2, 1e-1, 1e0]])
-  return z_approx, zLoss, recoveries
+    recoveries = np.array([1 if zLoss < thresh else 0 for thresh in [1e-4, 1e-3, 1e-2, 1e-1, 1e0]])
+    return z_approx, zLoss, recoveries
+  else:
+    vutils.save_image(x_approx.data, 'output/x_approx.png', normalize=True)
+    return z_approx
 
 def reverse_gan(opt):
   # load netG and fix its weights
@@ -146,16 +148,17 @@ def reverse_gan(opt):
     if opt.cuda:
       z = z.cuda()
     probZ = gaussPdf(z)
-    x = netG(z)
-    print i, 'P(z) =', probZ
+    with torch.no_grad():
+      x = netG(z)
+    print i, 'P(z) =', probZ.item()
     opt.manualSeed = random.randint(1, 10000)
     z_fixed = torch.FloatTensor(1, opt.nz, 1, 1).normal_(0, 1)
 
-    zApproxDisabled, zErrorDisabled, recoveryDisabled = reverse_z(netG, x, z, z_fixed.clone(), opt, 'disabled', ())
+    zApproxDisabled, zErrorDisabled, recoveryDisabled = reverse_z(netG, x, z, z_fixed.clone(), opt, 'disabled', (), evaluate_z=True)
     recoveries[0] += recoveryDisabled
     totalErrors[0] += zErrorDisabled
     for j, (clippingMethod, params) in enumerate(grid):
-      zApprox, zError, recovery = reverse_z(netG, x, z, z_fixed.clone(), opt, clippingMethod, params)
+      zApprox, zError, recovery = reverse_z(netG, x, z, z_fixed.clone(), opt, clippingMethod, params, evaluate_z=True)
       recoveries[j+1] += recovery
       totalErrors[j+1] += zError
 

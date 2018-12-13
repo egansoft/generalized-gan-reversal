@@ -2,8 +2,12 @@ import gan
 import numpy as np
 import sys
 import torch
+from argparse import Namespace
 import torchvision.utils as vutils
+import torchvision.transforms as transforms
 from torch.autograd import Variable
+from PIL import Image
+import reverse
 
 
 def slerp(p0, p1, t):
@@ -47,24 +51,43 @@ if len(sys.argv) > 2:
 else:
   outputImagePath = 'output/walk.png'
 if len(sys.argv) > 3:
-  numSamples = sys.argv[3]
+  numSamples = int(sys.argv[3])
 else:
   numSamples = 64
+if len(sys.argv) > 4:
+  x_path = sys.argv[4]
+else:
+  x_path = None
 
 ngpu, nc, nz, ngf = 1, 3, 100, 64, # lol
 G = gan.Generator(ngpu, nc, nz, ngf, savedParams)
+G = G.cuda()
 
-noise = torch.FloatTensor(numSamples, nz, 1, 1)
-noise.normal_(0, 1)
+if x_path != None:
+  #x_raw = io.imread(x_path)
+  x_raw = Image.open(x_path)
+  transform = transforms.Compose([
+    transforms.Scale(64),
+    transforms.CenterCrop(64),
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+  ])
+  x = transform(x_raw)
+  x = x.view(1, 3, 64, 64).cuda()
+  opt = Namespace(beta1=0.5, clip='disabled', cuda=True, expectedIter=20000, lr=0.01, nc=3, netG='sampleGparams.pth', ngf=64, ngpu=1, niter=20000, nz=100, manualSeed=1)
+  z_start = torch.FloatTensor(1, 100, 1, 1).normal_(0, 1)
+  point = reverse.reverse_z(G, x, None, z_start, opt, 'logistic', (2,2))
+  point = point.detach().cpu().numpy()
+  point = np.resize(point, 100)
 
-point = sample_spherical(1, 100)
-point = 0.2 * np.resize(point, 100)
+else:
+  point = sample_spherical(1, 100)
+  point = 0.2 * np.resize(point, 100)
+
 SLERP = interpolate(point)
-
-
 noise = torch.from_numpy(SLERP)
 
 noisev = Variable(noise).float()
+noisev = noisev.cuda()
 fake = G(noisev)
 vutils.save_image(fake.data, outputImagePath, normalize=True)
-
